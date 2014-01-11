@@ -9,6 +9,23 @@ class enum:
     def get_name(cls,x):
         return [s for (s,i) in cls.__dict__.items() if i == x][0]
     get_name = classmethod(get_name)
+    
+class Sides(enum):
+    others = 0
+    corporation = 1
+    runner = 2
+    
+class Factions(enum):
+    neatual = 0
+    
+    jinteki = 1
+    nbn = 2
+    haas = 3
+    weyland = 4
+    
+    anarch = 5
+    criminal = 6
+    shaper = 7
 
 class Card_Type(enum):
     unknown = 0
@@ -69,7 +86,6 @@ class Deck:
         self.card_list = []
         self.card_count = 0
         self.ready = False
-        self.card_count = 0
         self.card_count_min = 45
         
 class Statistics:
@@ -78,23 +94,65 @@ class Statistics:
 class NetRunner_Card(Card):
     def __init__(self):
         Card.__init__(self)
-        self.cycle = ""
-        self.No = ""
-        self.pack = ""
-        self.side = ""
-        self.faction = ""
+        self.cycle = Cycles.others
+        self.No = 0
+        self.pack = Packs.others
+        self.side = Sides.others
+        self.faction = Factions.neatual
         self.influence = 0
-        self.type = ""
+        self.type = Card_Type.unknown
         self.second_tpye_set = set()
+        
+class Card_Identity(NetRunner_Card):
+    def __init__(self):
+        NetRunner_Card.__init__(self)
+        self.type = Card_Type.identity
+        self.connection = 0
+        self.deck_max_influence = 15
+        self.deck_min_card_count = 45
+        
+    def check_deck_ready(self,deck):
+        if deck.card_count < self.deck_min_card_count:
+            deck.ready = False
+            return False
+        if deck.influence_used > self.deck_max_influence:
+            deck.ready = False
+            return False
+    
+    def get_influence(self,card):        
+        if card.faction == self.faction:
+            return 0
+        if card.type == Card_Type.agenda:
+            return 999
+        return card.influence
         
     
 class NetRunner_Deck(Deck):
     def __init__(self):
         Deck.__init__(self)
-        self.side = ""
+        self.side = Sides.others
+        self.faction = Factions.neatual
         self.cycle_set = set()
         self.pack_set = set()
         self.identity = 0
         self.influence_used = 0
         self.influence_max = 15
         self.statistics = Statistics()
+        
+    def check_ready(self):
+        try:
+            return self.identity.check_deck_ready(self)
+        except:
+            return False
+            
+    def get_influence(self,card):
+        return self.identity.get_influence(card)
+        
+    def set_indentity(self,identity):
+        self.identity = identity
+        self.side = identity.side
+        self.faction = identity.faction
+        self.influence_max = identity.deck_max_influence
+        self.card_count_min = identity.deck_min_card_count
+        self.influence_used = sum(map(self.get_influence,self.card_list))
+        self.ready = self.check_ready()
