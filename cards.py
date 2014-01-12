@@ -151,6 +151,7 @@ class Card_Identity(NetRunner_Card):
         self.connection = 0
         self.deck_max_influence = 15
         self.deck_min_card_count = 45
+        self.max_num = 1
         
     def check_deck_ready(self,deck):
         if deck.card_count < self.deck_min_card_count:
@@ -209,13 +210,13 @@ class NetRunner_Deck(Deck):
     def statistic_del(self,card):
         pass
     def check_cycle_exist(self,cycle):
-        for card in self.card_list.keys:
+        for card in self.card_list.keys():
             if card.cycle == cycle:
                 return True
         return False
         
     def check_pack_exist(self,pack):
-        for card in self.card_list.keys:
+        for card in self.card_list.keys():
             if card.pack == pack:
                 return True
         return False
