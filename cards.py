@@ -83,10 +83,49 @@ class Deck:
     def __init__(self):
         self.name = ""
         self.describe = ""
-        self.card_list = []
+        self.card_list = {}
         self.card_count = 0
         self.ready = False
         self.card_count_min = 45
+        
+class Card_Pool:
+    def __init__(self):
+        self.name = ""
+        self.cards = {}
+        self.card_count = 0
+        self.next_id = 1
+        
+    def add(self,card):
+        card.id = self.next_id
+        self.next_id += 1
+        self.cards[card.id] = card
+        self.card_count += 1
+        
+    def delete(self,id):
+        self.cards.pop(id)
+        self.card_count -= 1
+        
+    def get_card(self,id):
+        return self.cards[id]
+        
+class NetRunner_Card_Pool(Card_Pool):
+    def __init__(self):
+        Card_Pool.__init__(self)
+        self.packs = {}
+        
+    def add(self,card):
+        Card_Pool.add(self,card)
+        if self.packs.has_key(card.pack):
+            self.packs[card.pack].add(card.id)
+        else:
+            self.packs[card.pack] = [card.id]
+    
+    def delete(self,id):
+        card = self.get_card(id)
+        Card_Pool.delete(self,id)
+        self.packs[card.pack].remove(id)
+        if len(self.packs[card.pack]) == 0:
+            self.packs.pop(card.pack)
         
 class Statistics:
     pass
@@ -102,6 +141,8 @@ class NetRunner_Card(Card):
         self.influence = 0
         self.type = Card_Type.unknown
         self.second_tpye_set = set()
+        self.isUnique = False
+        self.max_num = 3
         
 class Card_Identity(NetRunner_Card):
     def __init__(self):
@@ -118,6 +159,12 @@ class Card_Identity(NetRunner_Card):
         if deck.influence_used > self.deck_max_influence:
             deck.ready = False
             return False
+        for (card,num) in deck.card_list:
+            if num > card.max_num:
+                deck.ready = False
+                return False
+        deck.ready = True
+        return True
     
     def get_influence(self,card):        
         if card.faction == self.faction:
@@ -126,7 +173,7 @@ class Card_Identity(NetRunner_Card):
             return 999
         return card.influence
         
-    
+  
 class NetRunner_Deck(Deck):
     def __init__(self):
         Deck.__init__(self)
@@ -156,3 +203,46 @@ class NetRunner_Deck(Deck):
         self.card_count_min = identity.deck_min_card_count
         self.influence_used = sum(map(self.get_influence,self.card_list))
         self.ready = self.check_ready()
+    
+    def statistic_add(self,card):
+        pass
+    def statistic_del(self,card):
+        pass
+    def check_cycle_exist(self,cycle):
+        for card in self.card_list.keys:
+            if card.cycle == cycle:
+                return True
+        return False
+        
+    def check_pack_exist(self,pack):
+        for card in self.card_list.keys:
+            if card.pack == pack:
+                return True
+        return False
+        
+    def add(self,card):
+        self.influence_used += self.get_influence(card) #must calculate the influence value before we put the card into the deck
+        if self.card_list.has_key(card):
+            self.card_list[card] += 1
+        else:
+            self.card_list[card] = 1
+        self.card_count += 1
+        
+        self.cycle_set.add(card.cycle)
+        self.pack_set.add(card.pack)
+        self.statistic_add(card)
+        
+    def delete(self,card):
+        if not self.card_list.has_key(card):
+            return
+        self.card_list[card] -= 1
+        if self.card_list[card] == 0:
+            self.card_list.pop(card)
+            if not self.check_cycle_exist(card.cycle):
+                self.cycle_set.remove(card.cycle)
+            if not self.check_pack_exist(card.pack):
+                self.pack_set.remove(card.pack)
+        
+        self.card_count -= 1
+        self.influence_used -= self.get_influence(card)
+        self.statistic_del(card)
